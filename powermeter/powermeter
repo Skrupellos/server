@@ -1,0 +1,159 @@
+#!/usr/bin/python2
+
+import select
+import datetime
+import threading
+import Queue
+import os
+import signal
+import sys
+
+
+
+def getTs(dt):
+	epoch = datetime.datetime(1970, 1, 1)
+	return  int( (dt - epoch).total_seconds() )
+
+
+
+class Meter(threading.Thread):
+	def __init__(self, pin):
+		super(Meter, self).__init__()
+		self.__pin = pin
+		self.__queue = Queue.Queue(10)
+		self.__running = True
+		self.__pipe_r, self.__pipe_w = os.pipe()
+		self.start()
+	
+	
+	def run(self):
+		self.__running = True
+		self.__send()
+	
+	
+	def stop(self):
+		self.__running = False
+		
+		os.write(self.__pipe_w, "\0")
+		self.__queue.put(None)
+		self.join()
+	
+	
+	def __waitWatt(self):
+		lastEvent = None
+		
+		for tick in self.__waitTick():
+			now = datetime.datetime.utcnow()
+			
+			## Throw the first event away
+			## (there is no preceeding event as a timebase)
+			if lastEvent is not None:
+				yield (lastEvent, now, 3600 / (now-lastEvent).total_seconds())
+			else:
+				yield (now, now, 0)# have to be different
+				
+			lastEvent = now
+	
+	
+	def __send(self):
+		failed = 0
+		lastSuccess = None
+		
+		for start, end, watt in self.__waitWatt():
+			msg = {
+				"start": getTs(start),
+				"end":   getTs(end),
+				"watt":  watt
+			}
+			
+			try:
+				if failed == 1:
+					self.__queue.put_nowait({
+						"start": lastSuccess,
+						"end":   lastSuccess,
+						"watt":  0
+					})
+					
+					failed = 2
+				
+				self.__queue.put_nowait(msg)
+				
+				lastSuccess = msg["end"]
+				failed = 0
+				
+			except Full:
+				failed = 1
+	
+	
+	def waitMsg(self):
+		while self.__running:
+			msg = self.__queue.get()
+			
+			if msg is None:
+				return
+			
+			elif msg["start"] != msg["end"]:
+				for t in range(msg["start"], msg["end"], 10):
+					yield (t, msg["watt"])
+			
+			else:
+				yield(msg["start"], msg["watt"])
+	
+	
+	def __waitTick(self):
+		path = "/sys/class/gpio/%s/value" % self.__pin
+		f = open(path, 'r')
+		
+		epoll = select.epoll()
+		epoll.register(f, select.EPOLLIN | select.EPOLLET)
+		epoll.register(self.__pipe_r, select.EPOLLIN)
+		
+		firstEvent = True
+		
+		while self.__running:
+			events = epoll.poll()
+			
+			for fileno, event in events:
+				if fileno == f.fileno():
+					## Throw the first read away
+					## (reads an event in the past)
+					if firstEvent:
+						firstEvent = False
+						continue
+					
+					## This can contain multiple events (reads) if we are to slow, but we don't care
+					#self.__f.seek(0)
+					#self.__f.read()
+					
+					yield True
+				
+				elif fileno == self.__pipe_r:
+					pass
+	
+
+	
+class Writer(threading.Thread):
+	def __init__(self, meter):
+		super(Writer, self).__init__()
+		self.__meter = meter
+		self.start()
+	
+	
+	def run(self):
+		for t, watt in self.__meter.waitMsg():
+			print('PUTVAL home/exec-power/power %i:%f' % (t, watt))
+			sys.stdout.flush()
+
+
+
+def signal_handler(signal, frame):
+	global m
+	m.stop()
+
+
+
+m = Meter("gpio1_ph14")
+Writer(m)
+
+signal.signal(signal.SIGINT, signal_handler)	
+signal.pause()
