@@ -1,0 +1,10 @@
+[Unit]
+Description=Setups GPIO pins
+
+[Service]
+ExecStart=/usr/local/bin/setup-gpio
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target collectd.service

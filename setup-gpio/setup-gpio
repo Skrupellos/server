@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+
+
+## Setup power outlet control pins
+for i in $(seq 4) ; do
+	chown root:outlet${i} /sys/class/leds/pd${i}\:outlet${i}/brightness
+	chmod g+w /sys/class/leds/pd${i}\:outlet${i}/brightness
+done
+
+
+## Setup power meter pin
+if [ ! -e /sys/class/gpio/gpio1_ph14 ] ; then
+	echo "1" >/sys/class/gpio/export
+fi
+
+echo "falling" >/sys/class/gpio/gpio1_ph14/edge
