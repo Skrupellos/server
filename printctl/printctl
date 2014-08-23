@@ -17,7 +17,7 @@ class RecoverableException(Exception):
 
 
 
-class Snmp():
+class Snmp(object):
 	def __init__(self, host = "localhost", port = 161, community = "public"):
 		self.__community = cmdgen.CommunityData(community)
 		self.__target = cmdgen.UdpTransportTarget((host, port))
@@ -54,7 +54,7 @@ class Snmp():
 
 
 
-class Gpio:
+class Gpio(object):
 	def __init__(self):
 		self.__state = self._get()
 	
@@ -62,8 +62,8 @@ class Gpio:
 	def s(self, state = True):
 		if state != self.__state:
 			self.__state = state
-			self._set(state)
 			logging.info("GPIO is now %s", state)
+			self._set(state)
 			return True
 		
 		else:
@@ -95,11 +95,11 @@ class LedGpio(Gpio):
 	def __init__(self, name):
 		self.__name = name
 		
-		self.__f = open("/sys/class/leds/%s/brightness" % name, "rw")
+		self.__f = open("/sys/class/leds/%s/brightness" % name, "r+")
 		with open("/sys/class/leds/%s/max_brightness" % name, "r") as f:
 			self.__max = f.read()
 		
-		super(LedGpio).__init__()
+		super(LedGpio, self).__init__()
 	
 	
 	def _get(self):
@@ -122,7 +122,7 @@ class FakeGpio(Gpio):
 
 
 
-class OutletCtl:
+class OutletCtl(object):
 	def __init__(self, printer, gpio, snmp, controlPath, statusPath, stats = None):
 		## Parameters
 		self.__printer = printer
@@ -269,7 +269,7 @@ class OutletCtl:
 
 
 
-class Stats:
+class Stats(object):
 	def __init__(self, path, snmp, base, interval = None):
 		self.__path = path
 		self.__snmp = snmp
@@ -334,7 +334,7 @@ class Stats:
 
 
 
-class NamedPipeLineReader:
+class NamedPipeLineReader(object):
 	def __init__(self, path):
 		self.__path  = path
 	
@@ -411,7 +411,7 @@ class NamedPipeLineReader:
 
 
 
-class MessageBroker:
+class MessageBroker(object):
 	def __init__(self, server, outletCtl):
 		self.__server = server
 		self.__outletCtl = outletCtl
