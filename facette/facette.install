@@ -1,12 +1,36 @@
-post_install(){
-  datadir=/var/lib/facette
-  
-  if ! getent passwd facette >/dev/null ; then
-    useradd --system --home-dir "$datadir" --shel /usr/bin/false facette
-  fi
+data_dir=/var/lib/facette
+owner=facette
+group=facette
 
-  if [[ ! -e "$datadir" ]]; then
-    install -d "$datadir"
-    chown -R facette.facette "/$datadir" &>/dev/null
+post_install(){
+  ## Create group
+  groupadd --system --force "$group"
+  
+  ## Create user
+  if ! getent passwd facette >/dev/null ; then
+    useradd --system --no-user-group \
+      --home-dir "$data_dir" \
+      --shell /usr/bin/false \
+      --gid "$group" \
+      "$owner"
+  fi
+  
+  ## Setup data directory
+  chown -R "$owner:$group" "$data_dir"
+}
+
+post_upgrade(){
+  post_install
+}
+
+post_remove(){
+  ## Delete user
+  if getent passwd "$owner" >/dev/null 2>&1; then
+    userdel "$owner"
+  fi
+  
+  ## Delete group
+  if getent group "$group" >/dev/null 2>&1; then
+    groupdel "$group"
   fi
 }
