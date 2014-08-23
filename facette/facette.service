@@ -1,0 +1,15 @@
+[Unit]
+Description=Time series data visualization and graphing software
+Documentation=man:facette(1) man:facettectl(8)
+Documentation=http://docs.facette.io/
+
+[Service]
+User=facette
+Type=simple
+ExecStart=/usr/bin/facette
+PIDFile=/run/facette/facette.pid
+RuntimeDirectory=facette
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

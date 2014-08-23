@@ -1,0 +1,12 @@
+post_install(){
+  datadir=/var/lib/facette
+  
+  if ! getent passwd facette >/dev/null ; then
+    useradd --system --home-dir "$datadir" --shel /usr/bin/false facette
+  fi
+
+  if [[ ! -e "$datadir" ]]; then
+    install -d "$datadir"
+    chown -R facette.facette "/$datadir" &>/dev/null
+  fi
+}

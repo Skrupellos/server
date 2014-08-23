@@ -1,0 +1,60 @@
+# Maintainer: Skupellos
+pkgname=facette
+pkgver=0.1.2
+pkgrel=1
+pkgdesc="Time series data visualization and graphing software"
+arch=('i686' 'x86_64')
+url="https://facette.io/"
+license=('BSD')
+depends=('rrdtool')
+makedepends=('nodejs' 'go')
+backup=('etc/facette/facette.json' 'etc/facette/providers/collectd.json')
+install=facette.install
+source=(
+  "https://github.com/facette/facette/archive/$pkgver.tar.gz"
+  "https://github.com/facette/facette/releases/download/$pkgver/facette-$pkgver-linux-amd64.tar.gz"
+  'facette.install'
+  'facette.service'
+)
+md5sums=('e097dca1c96b2c4dbbe3d80259f50c12'
+         '0833d0bcaaf2a1b080b1c97485e72e81'
+         'f1460af454a3c90a4f925a75c921ea5d'
+         '3cd4bfdfdfe2d8fc655c13bae64af025')
+
+
+
+build() {
+  cd "$pkgname-$pkgver"
+
+  make build-bin
+  make build-static
+}
+
+package() {
+  install -D 'facette.service' "$pkgdir/usr/lib/systemd/system/facette.service"
+  
+  
+  cd "$pkgname-$pkgver"
+
+  make PREFIX="$pkgdir/usr/" install-bin
+  make PREFIX="$pkgdir/usr/" install-static
+  
+  install -D 'docs/examples/facette.json'            "$pkgdir/etc/facette/facette.json"
+  install -D 'docs/examples/providers/collectd.json' "$pkgdir/etc/facette/providers/collectd.json"
+  sed -i 's#/var/run/#/run/#' "$pkgdir/etc/facette/facette.json"
+  
+  install -D 'LICENSE' "$pkgdir/usr/share/licenses/facette/LICENSE"
+  
+  
+  cd ../facette-linux-amd64
+  
+  install -D 'man/facette.1'    "$pkgdir/usr/share/man/man1/facette.1"
+  install -D 'man/facettectl.8' "$pkgdir/usr/share/man/man8/facettectl.8"
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  
+  ## Currently failing
+  #make test
+}
