@@ -1,0 +1,20 @@
+#%PAM-1.0
+
+## Test password
+auth      sufficient  pam_ldap.so minimum_uid=1100
+auth      sufficient  pam_unix.so try_first_pass
+auth      required    pam_deny.so
+
+## Is the user allowed
+account   sufficient  pam_ldap.so minimum_uid=1100
+account   sufficient  pam_unix.so
+account   required    pam_deny.so
+
+## Open and close session (logging)
+session   required    pam_limits.so
+session   required    pam_unix.so
+
+## chnage password
+password  sufficient  pam_unix.so md5 shadow
+password  sufficient  pam_ldap.so minimum_uid=1100 try_first_pass
+password  required    pam_deny.so
