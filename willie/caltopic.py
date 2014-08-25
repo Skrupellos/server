@@ -4,7 +4,7 @@ import datetime
 import dateutil.parser
 import pytz
 import locale
-from willie.module import commands
+import willie
 
 ## /msg chanserv flags #yourchannel yourbot +t
 class DataKraken:
@@ -137,11 +137,10 @@ def setup(bot):
 
 
 @willie.module.interval(60*30)
-def f_time(bot, trigger):
+def f_time(bot):
 	global lastTopic
 	
 	dsc = ue.getDescription()
-	bot.say(dsc)
 	
 	if bot.config.caltopic.mask is not None:
 		topic = bot.config.caltopic.mask % dsc
