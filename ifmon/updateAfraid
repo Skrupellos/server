@@ -1,0 +1,18 @@
+#!/bin/sh
+
+KEY="superSecretKey"
+
+eventHandler() {
+	interface=$1
+	state=$2
+	version=$3
+	ip=$4
+	
+	if [ $interface == "wlan0" -a $state == "new" ] ; then
+		echo wget -q -O - "https://freedns.afraid.org/dynamic/update.php?$KEY&address=$ip"
+	fi
+}
+
+while read line ; do
+	eventHandler $line
+done
