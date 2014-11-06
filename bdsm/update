@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+## Define ZONE in the following file
+source "/etc/$(basename "$0")"
+
+PATH="$(mktemp --tmpdir "$(basename "$0")-XXXXXXXXXX")"
+
+dig +short @localhost -k /etc/named/transfer-ext.key $ZONE AXFR >"$PATH"
+/usr/local/bin/dollarupdate "$PATH"
