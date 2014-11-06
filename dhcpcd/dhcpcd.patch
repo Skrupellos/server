@@ -1,0 +1,16 @@
+--- dhcpcd-6.6.0/if-linux.c	2014-10-29 01:53:02.000000000 +0100
++++ dhcpcd-6.6.0.new/if-linux.c	2014-11-05 03:38:47.934645348 +0100
+@@ -1349,13 +1349,6 @@
+ 		    &cinfo, sizeof(cinfo));
+ 	}
+ 
+-#ifdef IFA_F_NOPREFIXROUTE
+-	if (!IN6_IS_ADDR_LINKLOCAL(&ap->addr)) {
+-		flags = IFA_F_NOPREFIXROUTE;
+-		add_attr_32(&nlm.hdr, sizeof(nlm), IFA_FLAGS, flags);
+-	}
+-#endif
+-
+ 	if (send_netlink(ap->iface->ctx, NULL,
+ 	    NETLINK_ROUTE, &nlm.hdr, NULL) == -1)
+ 		retval = -1;
