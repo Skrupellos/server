@@ -1,0 +1,106 @@
+#!/bin/sh
+
+set -e
+
+CFG_FILE="/etc/$(basename "$0")"
+printUsage() {
+	echo "Usage: $(basename "$0") [USERNAME [ID]] ZONE" >&2
+	echo "" >&2
+	echo "  Uploads the new ZONE file to dollardns.net as zone ID (the ID can" >&2
+	echo "  be found in the edit link). The uploader will be authentificated" >&2
+	echo "  using USERNAME an a password read from STDIN. Alternatively," >&2
+	echo "  USERNAME, ID an password can be read from shell variables in" >&2
+	echo "  $CFG_FILE" >&2
+	
+	exit ${1:-1}
+}
+
+
+## ==== Read config ============================================================
+## -- Read config from file ----------------------------------------------------
+if [ -f "$CFG_FILE" ] ; then
+	source "$CFG_FILE"
+fi
+
+## -- Read config from arguments -----------------------------------------------
+ARGC="$#"
+if [ "$ARGC" -gt 3 -o "$ARGC" -lt 1 ] ; then
+	echo "Invalid arguments" >&2
+	printUsage
+fi
+
+if [ "$ARGC" -ge 3 ] ; then
+	USERNAME="$1"
+	shift
+fi
+
+if [ "$ARGC" -ge 2 ] ; then
+	ZONE_ID="$1"
+	shift
+fi
+
+if [ "$ARGC" -ge 1 ] ; then
+	ZONE_FILE="$1"
+fi
+
+## -- Validate configuration ---------------------------------------------------
+if [ ! -f "$ZONE_FILE" ] ; then
+	echo "No zone file $ZONE_FILE" >&2
+	printUsage
+fi
+
+if [ -z "$USERNAME" ] ; then
+	echo "No username" >&2
+	printUsage
+fi
+
+if [ -z "$ZONE_ID" ] ; then
+	echo "No zone id" >&2
+	printUsage
+fi
+
+## -- Get the password ---------------------------------------------------------
+if [ -z "$PASSWORD" ] ; then
+	echo -n "Enter password for $USERNAME: "
+	read -s PASSWORD
+	echo ""
+fi
+
+
+
+## ==== main() =================================================================
+DIR="$(mktemp --tmpdir --directory "$(basename "$0")-XXXXXXXXXX")"
+
+sed -e 's#\r\{0,1\}$#\r#' "$ZONE_FILE" >"$DIR/zone"
+
+
+## -- Login --------------------------------------------------------------------
+curl --silent \
+	--cookie-jar "$DIR/cookies" \
+	--form "URL=/home/index.pl" \
+	--form "UID=$USERNAME" \
+	--form "PWD=$PASSWORD" \
+	http://my.dollardns.net/login.pl >"$DIR/login.html"
+
+## -- Update -------------------------------------------------------------------
+curl --silent \
+	--cookie "$DIR/cookies" \
+	--data-urlencode "zone_id=$ZONE_ID" \
+	--data-urlencode "type=master" \
+	--data-urlencode "data@$DIR/zone" \
+	http://my.dollardns.net/dns/master/zone/save.pl >"$DIR/update.html"
+
+MSG="$(sed -n 's#.*msg=\([^"]*\)".*#\1#p' <"$DIR/update.html")"
+
+if [ "$MSG" != "Your+zone+has+been+saved" ] ; then
+	echo "Update failed:" >&2
+	echo "$MSG" >&2
+	exit 2
+fi
+
+## -- Logout -------------------------------------------------------------------
+curl --silent \
+	--cookie "$DIR/cookies" \
+	http://my.dollardns.net/logout.pl >"$DIR/logout.html"
+
+rm -R "$DIR"
