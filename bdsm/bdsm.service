@@ -1,0 +1,12 @@
+[Unit]
+Description=Watches BIND logfiles for newly signed zones
+
+
+[Service]
+User=bdsm
+Type=simple
+ExecStart=/usr/local/bin/bdsm
+
+
+[Install]
+WantedBy=multi-user.target

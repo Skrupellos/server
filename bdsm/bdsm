@@ -1,0 +1,130 @@
+#!/usr/bin/python
+
+## BDSM: BinD Signing Monitor
+
+
+import sys
+import os
+import pyinotify
+import time
+import subprocess
+import configparser
+
+
+
+class LogFileParser(pyinotify.ProcessEvent):
+	def __init__(self, x):
+		global path
+		self.__path = path
+		self.__file = None
+		self.__openFile()
+	
+	
+	def process_IN_MODIFY(self, event):
+		if event.pathname == self.__curPath:
+			self._parse()
+	
+	
+	def process_IN_CREATE(self, event):
+		if event.pathname == self.__path:
+			self.__openFile(False)
+	
+	
+	def process_IN_DELETE(self, event):
+		if event.pathname == self.__curPath:
+			self.__closeFile()
+	
+	
+	def process_IN_MOVED_TO(self, event):
+		if event.src_pathname == self.__curPath:
+			self.__curPath = event.pathname
+	
+	
+	
+	def __closeFile(self):
+		if self.__file is not None:
+			self.__file.close()
+			
+			self.__file = None
+			self.__curPath = ""
+	
+	
+	def __openFile(self, skip = True):
+		if not os.path.exists(self.__path):
+			return
+		
+		self.__closeFile()
+		
+		self.__file = open(self.__path, 'r')
+		self.__curPath = self.__path
+		
+		if skip:
+			self.__file.seek(0, 2) # 0 Bytes relative to the end (2) of the file.
+	
+	
+	def _readLines(self):
+		for line in self.__file.readlines():
+			yield line.rstrip()
+	
+	
+	def _parase(self):
+		raise NotImplemented()
+
+
+class ZoneUpdateParser(LogFileParser):
+	def _parse(self):
+		global zones
+		global cmd
+		
+		updatedZones = set()
+		
+		for line in self._readLines():
+			for zone in zones:
+				if line[25:(74+len(zone))] == ("notify: info: zone %s/IN (signed): sending notifies" % zone):
+					updatedZones.add(zone)
+					break
+			
+		if len(updatedZone) > 0:
+			genCmd = [cmd] + list(updatedZones)
+			print("UPDATE %s" % genCmd)
+			subprocess.call(genCmd)
+
+
+## Parse config
+config = configparser.SafeConfigParser({
+	"log_level": "WARNING",
+	"stats_interval": 5*60,
+	"led": None
+})
+config.read(["/etc/bdsm.ini", "bdsm.ini"])
+
+path       = config.get("bdsm", "path")
+cmd        = config.get("bdsm", "cmd")
+zones      = [x.strip() for x in config.get("bdsm", "zones").split(',')]
+blind_time = int(config.get("bdsm", "blind_time"))
+
+
+## Create monitors
+wm = pyinotify.WatchManager()
+wm.watch_transient_file(
+	path, 
+	pyinotify.IN_MODIFY | 
+	pyinotify.IN_CREATE | 
+	pyinotify.IN_DELETE | 
+	pyinotify.IN_MOVED_TO | 
+	pyinotify.IN_MOVED_FROM, 
+	ZoneUpdateParser
+)
+
+
+## Wait for notifications
+notifier = pyinotify.Notifier(wm)
+while True:
+	try:
+		if notifier.check_events():
+			notifier.read_events()
+			notifier.process_events()
+			time.sleep(blind_time)
+	except KeyboardInterrupt:
+		notifier.stop()
+		break
