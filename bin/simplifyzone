@@ -1,0 +1,61 @@
+#!/bin/bash
+
+modifyRrsig() {
+	if [ "$1" == TYPE65534 ] ; then
+		return 0
+	fi
+	
+	echo -n "$name  $ttl    $class	$type	"
+	
+	if [ "$1" == "TLSA" ] ; then
+		shift
+		echo -n "TYPE52 "
+	fi
+	
+	echo "$@"
+}
+
+modifyTlsa() {
+	ENC="$(printf "%02x%02x%02x" $1 $2 $3)"
+	shift ; shift ; shift
+	
+	ENC="$ENC$(printf "%s" $@)"
+	
+	echo "$name	$ttl	$class	TYPE52	\# $(( ${#ENC} / 2 )) $ENC"
+}
+
+
+modifyNsecx() {
+	echo -n "$name	$ttl	$class	$type	"
+	sed 's# TLSA# TYPE52#;# TYPE65534##;# TYPE65535##' <<<"$remaining"
+}
+
+handleLine() {
+	export name="$1" ; shift
+	export ttl="$1" ; shift
+	export class="$1" ; shift
+	export type="$1" ; shift
+	export remaining="$@"
+	
+	## The ANY test ist used to remove "transfer-ext.  0  ANY  TSIG ..." RR
+	if [ "$type" == "TYPE65534" -o "$type" == "TYPE65535" -o "$class" == "ANY" ] ; then
+		true
+	elif [ "$type" == "RRSIG" ] ; then
+		modifyRrsig $remaining
+	elif [ "$type" == "TLSA" ] ; then
+		modifyTlsa $remaining
+	elif [ "$type" == "NSEC3" -o "$type" == "NSEC" ] ; then
+		modifyNsecx $remaining
+	else
+		echo "$name	$ttl	$class	$type	$remaining"
+	fi
+}
+
+
+while read line ; do
+	if [ "${line:0:1}" == ";" ] ; then
+		true
+	else
+		handleLine $line
+	fi
+done

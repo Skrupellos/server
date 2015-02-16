@@ -1,11 +1,16 @@
 #!/bin/sh
 
 set -e
+set -o pipefail
 
-## Define ZONE in the following file
-source "/etc/$(basename "$0")"
+## Define ZONE in /etc/dollarupdate
+source "/etc/dollarupdate"
 
-PATH="$(mktemp --tmpdir "$(basename "$0")-XXXXXXXXXX")"
+ZF="$(mktemp)"
 
-dig +short @localhost -k /etc/named/transfer-ext.key $ZONE AXFR >"$PATH"
-/usr/local/bin/dollarupdate "$PATH"
+dig +onesoa @127.0.0.1 -k /etc/named/transfer-ext.key "$ZONE". AXFR | \
+/usr/local/bin/simplifyzone >"$ZF"
+
+/usr/local/bin/dollarupdate "$ZF"
+
+rm "$ZF"
