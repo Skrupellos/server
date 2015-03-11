@@ -1,0 +1,90 @@
+#!/bin/bash
+
+set -e
+
+declare -A outlets=(
+	["printer"]="pd1:outlet1"
+	["desk"]="pd2:outlet2"
+	["leds"]="pd3:outlet3"
+	["beamer"]="pd4:outlet4"
+)
+
+
+printUsage() {
+	echo "wee"
+	exit 1
+}
+
+
+isOn() {
+	if [ $# -ne 1 -o -z "${outlets[$1]}" ] ; then
+		echo "Unknown outlet" >&2
+		exit 1
+	fi
+	
+	[ $(</sys/class/leds/${outlets["$1"]}/brightness) -ne 0 ]
+}
+
+
+list() {
+	for outlet in ${!outlets[@]} ; do
+		show "$outlet"
+	done
+}
+
+
+show() {
+	if isOn "$1" ; then
+		state=2
+	else
+		state=1
+	fi
+	
+	echo -e " \033[3${state}m●\033[0m $1 (${outlets["$1"]})"
+}
+
+
+switch() {
+	if isOn "$1" ; then
+		new=false
+	else
+		new=true
+	fi
+	
+	case "$2" in
+		"on")
+			new=true
+		;;
+		"off")
+			new=false
+		;;
+		"toggle")
+		;;
+		*)
+			printUsage
+		;;
+	esac
+	
+	if $new ; then
+		cat /sys/class/leds/${outlets["$1"]}/max_brightness >/sys/class/leds/${outlets["$1"]}/brightness
+	else
+		echo "0" >/sys/class/leds/${outlets["$1"]}/brightness
+	fi
+}
+
+
+case $# in
+	0)
+		list
+	;;
+	1)
+		show "$1"
+	;;
+	2)
+		switch "$1" "$2"
+	;;
+	*)
+		printUsage
+	;;
+esac
+
