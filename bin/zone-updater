@@ -1,0 +1,129 @@
+#!/bin/bash
+
+set -e
+
+## SETUP
+## 
+## Add a user who can write into the dir, where BIND reads the zone files from.
+##  $ useradd -m -G named zones
+## 
+## Add SSH keys of DNS users (the DNS username is the argument of this script).
+## So append the following line to /home/zones/.ssh/authorized_keys
+##  command="/home/zones/zone-updater dau" ... key
+## 
+## Add the DNS users zones in /etc/named.conf
+##   zone "example.com" {
+##       type master;
+##       file "example.com";
+##       allow-transfer { key rndc-key; };
+##   };
+
+## Global configuration
+BIND_WD="/var/named"
+PERM="0640"
+OWN="zones.named"
+
+## Per user configuration (zones the DNS user has access to)
+dau_ZONES=(
+	example.com
+)
+
+
+assertValidZone() {
+	local e
+	
+	local var="${USER}_ZONES[@]"
+	for e in "${!var}" ; do
+		[[ "$e" == "$1" ]] && return 0
+	done
+	
+	echo "$USER has no access to zone '$1'." >&2
+	exit 1
+}
+
+
+printUsage() {
+	if [ "$#" -ne 0 ] ; then
+		echo "$@" >&2
+	fi
+	
+	echo "Usage: $(basename "$0") ACTION [ZONE]" >&2
+	echo "" >&2
+	echo "  manages a DNS ZONE." >&2
+	echo "" >&2
+	echo "ACTION" >&2
+	echo "  update ZONE       Updates the zone with a zone file from stdin" >&2
+	echo "  dump ZONE         Prints the current zone file" >&2
+	echo "  notify ZONE       Sends NOTIFY to all slaves" >&2
+	echo "  status ZONE       Prints the zone status" >&2
+	echo "  help              Display this help and exit" >&2
+	
+	test "$#" -eq 0
+	exit "$?"
+}
+
+
+cmd_update() {
+	local ZONE="$1"
+	local MAX_FILE_SIZE=500000
+	local TMP_FILE="/tmp/zone-update-$ZONE"
+	local DST_FILE="$BIND_WD/$ZONE"
+	
+	cut -c -"$MAX_FILE_SIZE" >"$TMP_FILE"
+	chown "$OWN"  "$TMP_FILE"
+	chmod "$PERM" "$TMP_FILE"
+	named-checkzone "$ZONE" "$TMP_FILE"
+	#rndc freeze "$ZONE" # for dynamic zones
+	mv -f "$TMP_FILE" "$DST_FILE"
+	rndc reload "$ZONE"
+	#rndc thaw "$ZONE" # for dynamic zones
+}
+
+
+cmd_dump() {
+	dig +onesoa +nocmd  @127.0.0.1 -k /etc/rndc.key "$1." AXFR
+}
+
+
+cmd_notify() {
+	rndc notify "$1"
+}
+
+
+cmd_status() {
+	rndc zonestatus "$1"
+}
+
+
+cmd_help() {
+	printUsage
+}
+
+
+parseCmd() {
+	if [ $# -lt 1 ] ; then
+		printUsage "Hello $USER, you have no shell access!"
+	fi
+	
+	local CMD="$1" ; shift
+	case "$CMD" in
+		update|dump|notify|status)
+			if [ $# -lt 1 ] ; then
+				printUsage "Missing zone"
+			fi
+			
+			local ZONE="$1" ; shift ; assertValidZone "$ZONE"
+			
+			"cmd_$CMD" "$ZONE" "$@"
+		;;
+		help)
+			"cmd_$CMD" "$@"
+		;;
+		*)
+			printUsage "Unknown command"
+	esac
+}
+
+
+USER="$1"
+parseCmd $SSH_ORIGINAL_COMMAND
