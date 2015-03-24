@@ -162,7 +162,8 @@ class OutletCtl(object):
 		self.__cc.createSubscription(
 			queueUrl,
 			events=["printer-state-changed"],
-			recipient_uri = (recipientUri)
+			recipient_uri = (recipientUri),
+			lease_duration = 0
 		)
 		
 		logging.info("Adding subscription %s", recipientUri)

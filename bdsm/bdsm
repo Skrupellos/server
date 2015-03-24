@@ -80,11 +80,11 @@ class ZoneUpdateParser(LogFileParser):
 		
 		for line in self._readLines():
 			for zone in zones:
-				if line[25:(74+len(zone))] == ("notify: info: zone %s/IN (signed): sending notifies" % zone):
+				if line.startswith("zone %s (signed): sending notifies" % zone):
 					updatedZones.add(zone)
 					break
 			
-		if len(updatedZone) > 0:
+		if len(updatedZones) > 0:
 			genCmd = [cmd] + list(updatedZones)
 			print("UPDATE %s" % genCmd)
 			subprocess.call(genCmd)
