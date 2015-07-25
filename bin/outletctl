@@ -3,10 +3,10 @@
 set -e
 
 declare -A outlets=(
-	["printer"]="pd1:outlet1"
-	["desk"]="pd2:outlet2"
-	["leds"]="pd3:outlet3"
-	["beamer"]="pd4:outlet4"
+	["printer"]="gpio97"
+	["leds"]="gpio98"
+	["desk"]="gpio99"
+	["beamer"]="gpio100"
 )
 
 
@@ -22,7 +22,7 @@ isOn() {
 		exit 1
 	fi
 	
-	[ $(</sys/class/leds/${outlets["$1"]}/brightness) -ne 0 ]
+	[ $(</sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/${outlets["$1"]}/value) -ne 0 ]
 }
 
 
@@ -66,9 +66,9 @@ switch() {
 	esac
 	
 	if $new ; then
-		cat /sys/class/leds/${outlets["$1"]}/max_brightness >/sys/class/leds/${outlets["$1"]}/brightness
+		echo "1" >/sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/${outlets["$1"]}/value
 	else
-		echo "0" >/sys/class/leds/${outlets["$1"]}/brightness
+		echo "0" >/sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/${outlets["$1"]}/value
 	fi
 }
 

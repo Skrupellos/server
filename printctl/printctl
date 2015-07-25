@@ -91,12 +91,29 @@ class Gpio(object):
 
 
 
+class GpioGpio(Gpio):
+	def __init__(self, name):
+		self.__name = name
+		self.__f = open("%s/value" % name, "r+")
+		super(GpioGpio, self).__init__()
+	
+	
+	def _get(self):
+		return (self.__f.read() != "0\n")
+	
+	
+	def _set(self, state):
+		self.__f.write("1\n" if state else "0\n")
+		self.__f.flush()
+
+
+
 class LedGpio(Gpio):
 	def __init__(self, name):
 		self.__name = name
 		
-		self.__f = open("/sys/class/leds/%s/brightness" % name, "r+")
-		with open("/sys/class/leds/%s/max_brightness" % name, "r") as f:
+		self.__f = open("%s/brightness" % name, "r+")
+		with open("%s/max_brightness" % name, "r") as f:
 			self.__max = f.read()
 		
 		super(LedGpio, self).__init__()
@@ -493,9 +510,10 @@ logging.basicConfig(
 snmp = Snmp(config.get("printer", "host"))
 
 
-if config.get("gpio", "led") is not None:
+if config.get("gpio", "gpio") is not None:
+	gpio = GpioGpio(config.get("gpio", "gpio"))
+elif config.get("gpio", "led") is not None:
 	gpio = LedGpio(config.get("gpio", "led"))
-
 else:
 	gpio = FakeGpio()
 

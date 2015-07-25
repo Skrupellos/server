@@ -162,7 +162,7 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)	
 
 
-m = Meter("gpio1_ph14")
+m = Meter("gpio238")
 Writer(m)
 
 

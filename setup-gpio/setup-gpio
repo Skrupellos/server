@@ -5,15 +5,22 @@ set -e
 
 
 ## Setup power outlet control pins
-for i in $(seq 4) ; do
-	chown root:outlet${i} /sys/class/leds/pd${i}\:outlet${i}/brightness
-	chmod g+w /sys/class/leds/pd${i}\:outlet${i}/brightness
+for i in $(seq 97 100) ; do
+	if [ ! -e /sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/gpio$i ] ; then
+		echo $i >/sys/class/gpio/export
+	fi
+	echo out >/sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/gpio$i/direction
+	chown root:outlet$(( $i - 96 )) /sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/gpio$i/value
+	chmod g+w /sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/gpio$i/value
 done
 
 
 ## Setup power meter pin
-if [ ! -e /sys/class/gpio/gpio1_ph14 ] ; then
-	echo "1" >/sys/class/gpio/export
+if [ ! -e /sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/gpio238 ] ; then
+	echo 238 >/sys/class/gpio/export
+	echo "falling" >/sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/gpio238
 fi
 
-echo "falling" >/sys/class/gpio/gpio1_ph14/edge
+
+echo cpu0 >/sys/class/leds/cubieboard:blue:usr/trigger
+echo none >/sys/class/leds/cubieboard:green:usr/trigger
