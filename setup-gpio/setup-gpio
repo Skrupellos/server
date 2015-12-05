@@ -18,7 +18,7 @@ done
 ## Setup power meter pin
 if [ ! -e /sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/gpio238 ] ; then
 	echo 238 >/sys/class/gpio/export
-	echo "falling" >/sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/gpio238
+	echo "falling" >/sys/devices/platform/soc@01c00000/1c20800.pinctrl/gpio/gpio238/edge
 fi
 
 
