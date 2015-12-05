@@ -1,0 +1,26 @@
+Common subdirectories: facette-0.3.0.bak/build and facette-0.3.0/build
+Common subdirectories: facette-0.3.0.bak/cmd and facette-0.3.0/cmd
+Common subdirectories: facette-0.3.0.bak/debian and facette-0.3.0/debian
+Common subdirectories: facette-0.3.0.bak/docs and facette-0.3.0/docs
+diff -u -u facette-0.3.0.bak/Makefile facette-0.3.0/Makefile
+--- facette-0.3.0.bak/Makefile	2015-12-05 03:37:02.668788915 +0100
++++ facette-0.3.0/Makefile	2015-12-05 03:37:44.939399344 +0100
+@@ -116,10 +116,10 @@
+ 	@$(call mesg_start,$(notdir $@),Building $(notdir $@)...)
+ 	@install -d -m 0755 $(dir $@) && $(GO) build \
+ 			-ldflags " \
+-				-X main.version $(VERSION) \
+-				-X main.buildDate '$(BUILD_DATE)' \
+-				$(PKG_LIST:%=-X github.com/facette/facette/%.version $(VERSION)) \
+-				$(PKG_LIST:%=-X github.com/facette/facette/%.buildDate '$(BUILD_DATE)') \
++				-X main.version=$(VERSION) \
++				-X main.buildDate='$(BUILD_DATE)' \
++				$(PKG_LIST:%=-X github.com/facette/facette/%.version=$(VERSION)) \
++				$(PKG_LIST:%=-X github.com/facette/facette/%.buildDate='$(BUILD_DATE)') \
+ 			" \
+ 			-tags "$(TAGS)" \
+ 			-o $@ cmd/$(notdir $@)/*.go && \
+Common subdirectories: facette-0.3.0.bak/node_modules and facette-0.3.0/node_modules
+Common subdirectories: facette-0.3.0.bak/pkg and facette-0.3.0/pkg
+Common subdirectories: facette-0.3.0.bak/tests and facette-0.3.0/tests
+Common subdirectories: facette-0.3.0.bak/thirdparty and facette-0.3.0/thirdparty

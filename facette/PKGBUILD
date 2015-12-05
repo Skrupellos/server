@@ -1,68 +1,100 @@
 # Maintainer: Skupellos
 pkgname=facette
-pkgver=0.1.2
+pkgver=0.3.0
 pkgrel=1
 pkgdesc="Time series data visualization and graphing software"
 arch=('i686' 'x86_64')
 url="https://facette.io/"
 license=('BSD')
-depends=('rrdtool')
-makedepends=('nodejs' 'go')
-backup=('etc/facette/facette.json' 'etc/facette/providers/collectd.json')
-install=facette.install
-source=(
-  "https://github.com/facette/facette/archive/$pkgver.tar.gz"
-  "https://github.com/facette/facette/releases/download/$pkgver/facette-$pkgver-linux-amd64.tar.gz"
-  'facette.install'
-  'facette.service'
-  'unix-socket.patch'
+depends=('rrdtool<1.5')
+makedepends=('npm' 'go')
+
+backup=(
+	'etc/facette/facette.json'
+	'etc/facette/providers-available/collectd.json'
+	'etc/facette/providers-available/graphite.json'
+	'etc/facette/providers-available/influxdb.json'
+	'etc/facette/providers-available/kairosdb.json'
 )
-md5sums=('e097dca1c96b2c4dbbe3d80259f50c12'
-         '0833d0bcaaf2a1b080b1c97485e72e81'
-         '1426059566937df352b92d3a40754d97'
-         '3cd4bfdfdfe2d8fc655c13bae64af025'
-         '6b98d8cd87b232020478e08e114a05bd')
+
+install=facette.install
+
+source=(
+	"https://github.com/facette/facette/archive/${pkgver}.tar.gz"
+	"https://github.com/facette/facette/releases/download/${pkgver}/facette-${pkgver}-linux-amd64.tar.gz"
+	'facette.install'
+	'facette.service'
+	'00-config.patch'
+	'01-make.patch'
+)
+
+
+sha512sums=(
+	'1e7d95aed86646be7396a07a8c2b92f2cf171b676deda7cf989f3c8c155b7940d3532f3c00865aa46ef3cb481bf89b0c03498f5f87455ac183e358d24ab852be'
+	'5c91d51f0f7d0db99c94b2f8c02ac82bf51cbd1effe636ae1a3f46b201c9ecf65d1c0998ffc0bfa1969ed58171c80903ddeac03cc1c0e9c46919eb13a91f2645'
+	'9776db208191236d0f79951dd756fe96846e4793663311e9d2ff6d8b966bf2820d4bff8710b851aff583cec764169f14e50251f502c15bc57795f1602a645b3a'
+	'4fc924cc9a38a52923534094be6c2b947c4b392086788fcdaa3f2d66d70f379c5280aca97d7340b81f1f64d21f6ed01def9a95525460751a5697becc0a5780a3'
+	'e7a6c26928479f14f3fcca72bcd7ae38d7af03ce36c7722f0703dce4411d71fab36dc4eef70b12606977f7c265fd80f1320b7607415c3c293a8944bfc27de2b4'
+	'0cfe2e2225859fdf1213d730e419b773b2d7f741400e6e92405da4d92834178b9d602cce5b3e61d6db562b5fcb6ffa19f11c62db1e22ce9e9cf48e07dac4ddd0'
+)
 
 
 prepare() {
-  cd "$pkgname-$pkgver"
-  
-  patch -p1 -i "$srcdir/unix-socket.patch"
+	patch -p1  -d "${pkgname}-${pkgver}" -i "${srcdir}/00-config.patch"
+	patch -p1  -d "${pkgname}-${pkgver}" -i "${srcdir}/01-make.patch"
 }
+
 
 build() {
-  cd "$pkgname-$pkgver"
-  
-  make build-bin
-  make build-static
+	## package() does this again
+	#make -C "${pkgname}-${pkgver}" PREFIX="${pkgdir}/usr/" build-bin
+	#make -C "${pkgname}-${pkgver}" PREFIX="${pkgdir}/usr/" build-static
+	true
 }
+
 
 package() {
-  install -Dm0644 'facette.service' "$pkgdir/usr/lib/systemd/system/facette.service"
-  install -d "$pkgdir/var/lib/facette/"
-  
-  
-  cd "$pkgname-$pkgver"
-
-  make PREFIX="$pkgdir/usr/" install-bin
-  make PREFIX="$pkgdir/usr/" install-static
-  
-  install -Dm0644 'docs/examples/facette.json'            "$pkgdir/etc/facette/facette.json"
-  install -Dm0644 'docs/examples/providers/collectd.json' "$pkgdir/etc/facette/providers/collectd.json"
-  sed -i 's#/var/run/#/run/#' "$pkgdir/etc/facette/facette.json"
-  
-  install -Dm0644 'LICENSE' "$pkgdir/usr/share/licenses/facette/LICENSE"
-  
-  
-  cd ../facette-linux-amd64
-  
-  install -Dm0644 'man/facette.1'    "$pkgdir/usr/share/man/man1/facette.1"
-  install -Dm0644 'man/facettectl.8' "$pkgdir/usr/share/man/man8/facettectl.8"
+	## Install systemd service file
+	install -Dm0644 'facette.service' "${pkgdir}/usr/lib/systemd/system/facette.service"
+	
+	## Create the data dir
+	install -d "${pkgdir}/var/lib/facette/"
+	
+	## Install binary und static files using the "official" makefile
+	make -C "${pkgname}-${pkgver}" PREFIX="${pkgdir}/usr/" install-bin
+	make -C "${pkgname}-${pkgver}" PREFIX="${pkgdir}/usr/" install-static
+	
+	## Install configuration
+	install -Dm0644 "${pkgname}-${pkgver}/docs/examples/facette.json" "${pkgdir}/etc/facette/facette.json"
+	sed -i 's#/var/run/#/run/#' "${pkgdir}/etc/facette/facette.json"
+	sed -i 's#/var/run/#/run/#' "${pkgdir}/etc/facette/facette.json"
+	
+	## Install providers
+	pushd "${pkgname}-${pkgver}/docs/examples/providers"
+	for json in *.json ; do
+		install -Dm0644 "${json}" "${pkgdir}/etc/facette/providers-available/${json}"
+	done
+	popd
+	install -d "${pkgdir}/etc/facette/providers-enabled"
+	
+	## Install license
+	install -Dm0644 "${pkgname}-${pkgver}/LICENSE" "${pkgdir}/usr/share/licenses/facette/LICENSE"
+	
+	## Install examples
+	install -Dm0644 "${pkgname}-${pkgver}/docs/examples/facette.apache2"  "${pkgdir}/usr/share/doc/facette/apache2.conf"
+	install -Dm0644 "${pkgname}-${pkgver}/docs/examples/facette.nginx" "${pkgdir}/usr/share/doc/facette/nginx.conf"
+	
+	## Copy documentation from the official release, so we don't have to use
+	## pandoc (which is only in AUR)
+	pushd facette-linux-amd64/share/man
+	for manpage in * ; do
+		## mind the gap (before the "-1")
+		install -Dm0644 "${manpage}" "${pkgdir}/usr/share/man/man${manpage: -1}/${manpage}"
+	done
+	popd
 }
 
+
 check() {
-  cd "$pkgname-$pkgver"
-  
-  ## Currently failing
-  #make test
+	make -C "${pkgname}-${pkgver}" test
 }

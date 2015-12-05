@@ -1,0 +1,26 @@
+diff -aur old/docs/examples/facette.json new/docs/examples/facette.json
+--- old/docs/examples/facette.json	2015-03-22 18:29:52.000000000 +0100
++++ new/docs/examples/facette.json	2015-06-06 21:17:22.340226308 +0200
+@@ -1,7 +1,2 @@
+ {
+-	"bind": ":12003",
+-	"base_dir": "/usr/local/share/facette",
+-	"providers_dir": "/etc/facette/providers",
+-	"data_dir": "/var/lib/facette",
+-	"pid_file": "/var/run/facette/facette.pid"
+ }
+diff -aur old/pkg/config/config.go new/pkg/config/config.go
+--- old/pkg/config/config.go	2015-03-22 18:29:52.000000000 +0100
++++ new/pkg/config/config.go	2015-06-06 21:19:22.111157699 +0200
+@@ -24,9 +24,9 @@
+ 	// DefaultDataDir represents the default internal data files directory location.
+ 	DefaultDataDir string = "/var/lib/facette"
+ 	// DefaultProvidersDir represents the default providers definition files directory location.
+-	DefaultProvidersDir string = "/etc/facette/providers"
++	DefaultProvidersDir string = "/etc/facette/providers-enabled"
+ 	// DefaultPidFile represents the default server process PID file location.
+-	DefaultPidFile string = "/var/run/facette/facette.pid"
++	DefaultPidFile string = "/run/facette/facette.pid"
+ 	// DefaultPlotSample represents the default plot sample for graph querying.
+ 	DefaultPlotSample int = 400
+ )

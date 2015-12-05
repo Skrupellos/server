@@ -1,0 +1,7 @@
+*
+!.gitignore
+!PKGBUILD
+!00-config.patch
+!01-make.patch
+!facette.service
+!facette.install
