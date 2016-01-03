@@ -4,7 +4,10 @@ import datetime
 import dateutil.parser
 import pytz
 import locale
-import willie
+import sopel
+from sopel.logger import get_logger
+
+LOGGER = get_logger(__name__)
 
 ## /msg chanserv flags #yourchannel yourbot +t
 class DataKraken:
@@ -111,7 +114,7 @@ def configure(config):
 		)
 		config.add_list(
 			"core", "locale",
-			"The optional locale for the whole willie process, if this module is loaded. If not provided, the locale won't be changed (e.g. de_DE.utf8)",
+			"The optional locale for the whole sopel process, if this module is loaded. If not provided, the locale won't be changed (e.g. de_DE.utf8)",
 			"Locale:"
 		)
 		config.add_list(
@@ -125,19 +128,20 @@ def setup(bot):
 	global dk
 	global ue
 	
-	if not bot.config.has_option(section, "calendar_id") or not bot.config.has_option(section, "api_key"):
-		raise ConfigurationError("Not all ([%s] calendar_id and api_key) settings are defined" % section)
+	#if not bot.config.has_option(section, "calendar_id") or not bot.config.has_option(section, "api_key"):
+	#if True: #not bot.config[section][ "calendar_id"] or not bot.config[section]["api_key"]:
+	#	raise ConfigurationError("Not all ([%s] calendar_id and api_key) settings are defined" % section)
 	
 	dk = DataKraken(
 		bot.config.caltopic.calendar_id,
 		bot.config.caltopic.api_key
 	)
 	
-	ue = UpcomingEvents(dk, bot.config.core.locale)
+	ue = UpcomingEvents(dk, getattr(bot.config.caltopic, "locale"))
 
 
-@willie.module.interval(60*30)
-def f_time(bot):
+@sopel.module.interval(60*30)
+def updateTopic(bot):
 	global lastTopic
 	
 	dsc = ue.getDescription()
@@ -148,7 +152,7 @@ def f_time(bot):
 		topic = dsc
 	
 	if topic == lastTopic:
-		bot.debug("caltopic", "Topic has not changed", "verbose")
+		LOGGER.debug("caltopic", "Topic has not changed", "verbose")
 		return
 	
 	lastTopic = topic
