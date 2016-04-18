@@ -1,0 +1,52 @@
+#!/bin/zsh
+
+ldapsearch -b "ou=Groups,dc=universe,dc=homenet,dc=org" -Y EXTERNAL -H ldapi:// -s one "" member 2>/dev/null | \
+while read -r line ; do
+	if [[ "$line" == 'dn: '* ]] ; then
+		group="${line##dn: }"
+		continue
+	fi
+	
+	if [[ "$line" == 'member: '* ]] ; then
+		member="${line##member: }"
+		if ! ldapsearch -b "$member" -Y EXTERNAL -H ldapi:// -s base "(memberOf=${group})" 2>/dev/null | grep -xF '# numEntries: 1' >/dev/null ; then
+			echo "${group} not in ${member}"
+		fi
+	fi
+done
+
+
+ldapsearch -b "ou=People,dc=universe,dc=homenet,dc=org" -Y EXTERNAL -H ldapi:// -s one "" memberOf 2>/dev/null | \
+while read -r line ; do
+	if [[ "$line" == 'dn: '* ]] ; then
+		member="${line##dn: }"
+		continue
+	fi
+	
+	if [[ "$line" == 'memberOf: '* ]] ; then
+		group="${line##memberOf: }"
+		if ! ldapsearch -b "$group" -Y EXTERNAL -H ldapi:// -s base "(member=${member})" 2>/dev/null | grep -xF '# numEntries: 1' >/dev/null ; then
+			echo "${member} not in ${group}"
+		fi
+	fi
+done
+
+( getent passwd ; getent group ) | \
+cut -d: -f3 | \
+sort -nu | ( \
+while read n ; do
+	if [ "$n" -gt 1000 ] ; then
+		user="$(getent passwd $n | cut -d: -f1)"
+		group="$(getent group $n | cut -d: -f1)"
+		
+		printf "%5s: %20s %20s" "$n" "$user" "$group"
+		
+		if [ -z "$user" -o -z "$group" ] ; then
+			echo ""
+		elif [ "$user" = "$group" ] ; then
+			echo -e " \033[1;32mOK\033[0m"
+		else
+			echo -e " \033[1;31mERR\033[0m"
+		fi
+	fi
+done )
